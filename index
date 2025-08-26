@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phần mềm điểm danh học sinh (Cộng tác)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* General styling for the entire page */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Main container for the application */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* Header section */
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        #app-id-container {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        #app-id-container span {
+            font-weight: bold;
+            color: #fff;
+        }
+
+
+        /* Tab navigation */
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #4facfe;
+            border-bottom: 3px solid #4facfe;
+        }
+
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        /* Content for each tab */
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Styling for form sections */
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 4px solid #4facfe;
+        }
+
+        .form-section h3 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        /* General button styling */
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(86, 171, 47, 0.3);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Student list styling */
+        .student-list {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .student-list h3 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .student-item {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .student-item:hover {
+            background: #f8f9fa;
+        }
+
+        .student-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .student-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .student-detail strong {
+            color: #495057;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .student-detail span {
+            color: #6c757d;
+            font-size: 1rem;
+        }
+
+        /* Attendance controls and status styling */
+        .attendance-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .attendance-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 2px solid transparent;
+        }
+
+        .status-present {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .status-late {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffeaa7;
+        }
+        
+        .status-absent-unexcused {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        .status-absent-excused {
+            background: #e2e3e5;
+            color: #383d41;
+            border-color: #d6d8db;
+        }
+
+
+        /* Quick actions bar */
+        .quick-actions {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Statistics grid and cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 4px solid #4facfe;
+        }
+
+        .stats-card h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .stats-card .number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 5px;
+        }
+
+        .stats-card .label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        /* Date filter section */
+        .date-filter {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+        
+        /* Empty state for lists */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .student-info {
+                grid-template-columns: 1fr;
+            }
+
+            .attendance-controls {
+                justify-content: center;
+            }
+
+            .quick-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Phần mềm điểm danh học sinh</h1>
+            <p>Cộng tác điểm danh thời gian thực</p>
+            <div id="app-id-container">
+                Mã chia sẻ (App ID): <span id="appIdDisplay">Đang tải...</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('students')">👥 Quản lý học sinh</button>
+            <button class="tab" onclick="showTab('attendance')">📝 Điểm danh</button>
+            <button class="tab" onclick="showTab('daily-stats')">📊 Thống kê hàng ngày</button>
+            <button class="tab" onclick="showTab('monthly-stats')">📈 Thống kê hàng tháng</button>
+        </div>
+
+        <!-- Student Management Tab -->
+        <div id="students" class="tab-content active">
+            <div class="form-section">
+                <h3>📁 Nhập danh sách từ Excel</h3>
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Chọn file Excel (*.xlsx, *.xls)</label>
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="handleExcelUpload(event)">
+                        <small style="color: #6c757d; margin-top: 5px; display: block;">
+                            📋 File Excel cần có các cột: <strong>Họ và tên, Lớp, Ngày sinh, Giới tính, Loại học sinh</strong>
+                        </small>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                    <button class="btn btn-success" onclick="importStudentsFromExcel()">
+                        📥 Nhập từ Excel
+                    </button>
+                    <button class="btn btn-info" onclick="downloadExcelTemplate()">
+                        📄 Tải mẫu Excel
+                    </button>
+                    <span id="importStatus" style="color: #28a745; font-weight: bold;"></span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>➕ Thêm học sinh mới</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Họ và tên</label>
+                        <input type="text" id="studentName" placeholder="Nhập họ và tên học sinh">
+                    </div>
+                    <div class="form-group">
+                        <label>Lớp</label>
+                        <input type="text" id="studentClass" placeholder="Ví dụ: 6A1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ngày sinh</label>
+                        <input type="date" id="studentBirthDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Giới tính</label>
+                        <select id="studentGender">
+                            <option value="">-- Chọn giới tính --</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Loại học sinh</label>
+                        <select id="studentType">
+                            <option value="">-- Chọn loại --</option>
+                            <option value="Bán trú">Bán trú</option>
+                            <option value="Không bán trú">Không bán trú</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addStudent()">➕ Thêm học sinh</button>
+            </div>
+
+            <div class="student-list">
+                <h3>📋 Danh sách học sinh</h3>
+                <div id="studentsList"></div>
+            </div>
+        </div>
+
+        <!-- Attendance Tab -->
+        <div id="attendance" class="tab-content">
+            <div class="quick-actions">
+                <button class="btn btn-success" onclick="markAllPresent()">✅ Tất cả có mặt</button>
+                <button class="btn btn-info" onclick="exportAttendanceToExcel()">📁 Xuất Excel</button>
+                <button class="btn" style="background: #6c757d; color: white;" onclick="showSaveLog()">📋 Nhật ký lưu</button>
+            </div>
+
+            <div class="date-filter">
+                <h4>📅 Lọc và điểm danh</h4>
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label for="attendanceDate">Chọn ngày điểm danh</label>
+                        <input type="date" id="attendanceDate" onchange="loadAttendanceForDate()">
+                    </div>
+                    <div class="form-group">
+                        <label for="classFilter">Chọn lớp</label>
+                        <select id="classFilter" onchange="loadAttendanceForDate()"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="student-list">
+                <h3 id="attendanceListTitle">👨‍🎓 Điểm danh học sinh</h3>
+                <div id="attendanceList"></div>
+            </div>
+        </div>
+
+        <!-- Daily Stats Tab -->
+        <div id="daily-stats" class="tab-content">
+            <div class="date-filter">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label>Chọn ngày thống kê</label>
+                        <input type="date" id="dailyStatsDate" onchange="loadDailyStats()">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-info" onclick="loadDailyStats()">📊 Xem thống kê</button>
+                        <button class="btn btn-success" onclick="exportDailyStatsToExcel()">📁 Xuất Excel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="dailyStatsGrid"></div>
+            <div class="student-list" id="dailyStatsList"></div>
+        </div>
+
+        <!-- Monthly Stats Tab -->
+        <div id="monthly-stats" class="tab-content">
+            <div class="date-filter">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label>Chọn tháng/năm</label>
+                        <input type="month" id="monthlyStatsDate" onchange="loadMonthlyStats()">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-info" onclick="loadMonthlyStats()">📈 Xem thống kê</button>
+                        <button class="btn btn-success" onclick="exportMonthlyStatsToExcel()">📁 Xuất Excel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="monthlyStatsGrid"></div>
+            <div class="student-list" id="monthlyStatsList"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // --- GLOBAL VARIABLES ---
+   	const appId = 'diem-danh-NTTo';
+        const firebaseConfig = {
+    		apiKey: "AIzaSyBbNvKLgj8QdM22rqxnS65cJGSF5wNUIJE",
+    		authDomain: "diem-danh-20xx.firebaseapp.com",
+    		projectId: "diem-danh-20xx",
+    		storageBucket: "diem-danh-20xx.firebasestorage.app",
+    		messagingSenderId: "474588160188",
+    		appId: "1:474588160188:web:37a1b187369ff47e56f0b9",
+    		measurementId: "G-CYHW7NZKGM"
+  		};
+        
+        let db;
+        let auth;
+        let dataDocRef;
+
+        // --- DATA MANAGEMENT ---
+        window.students = [];
+        window.attendanceRecords = {};
+        window.excelData = [];
+
+        // --- FIREBASE INITIALIZATION ---
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            document.getElementById('appIdDisplay').textContent = appId;
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+            alert("Không thể kết nối đến cơ sở dữ liệu. Vui lòng thử lại.");
+        }
+
+        // --- ASYNC AUTH & DATA LISTENER SETUP ---
+        async function initializeFirebase() {
+            try {
+                // Step 1: Authenticate user
+		await signInAnonymously(auth);
+		console.log("Signed in anonymously.");
+
+                const user = auth.currentUser;
+                if (!user) {
+                    throw new Error("Authentication failed, user is null.");
+                }
+
+                // Step 2: Set up Firestore listener AFTER successful authentication
+                dataDocRef = doc(db, "artifacts", appId, "public", "data", "attendance", "mainDoc");
+
+                onSnapshot(dataDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        window.students = data.students || [];
+                        window.attendanceRecords = data.attendanceRecords || {};
+                    } else {
+                        // Initialize with sample data if document doesn't exist
+                        window.students = [
+                            { id: 1, name: "Nguyễn Văn An", class: "6A1", birthDate: "2011-03-15", gender: "Nam", type: "Bán trú" },
+                            { id: 2, name: "Trần Thị Bình", class: "6A1", birthDate: "2011-05-20", gender: "Nữ", type: "Không bán trú" },
+                            { id: 3, name: "Lê Minh Cường", class: "6A2", birthDate: "2011-07-10", gender: "Nam", type: "Bán trú" }
+                        ];
+                        window.attendanceRecords = {};
+                        saveData(); 
+                    }
+                    updateAllUI();
+                }, (error) => {
+                    console.error("Error listening to data:", error);
+                    alert("Mất kết nối với dữ liệu thời gian thực.");
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                alert("Không thể khởi tạo ứng dụng hoặc kết nối dữ liệu.");
+            }
+        }
+        
+        initializeFirebase();
+
+
+        // --- UI UPDATE FUNCTION ---
+        function updateAllUI() {
+            window.displayStudents();
+            window.populateClassFilter();
+            window.loadAttendanceForDate();
+            window.loadDailyStats();
+            window.loadMonthlyStats();
+        }
+
+        // --- DATA PERSISTENCE (now using Firestore) ---
+        let saveTimeout = null;
+
+        async function saveData(showNotification = false) {
+            if (!dataDocRef) {
+                console.error("Firestore document reference not initialized.");
+                return;
+            }
+            
+            const dataToSave = {
+                students: window.students,
+                attendanceRecords: window.attendanceRecords,
+            };
+            
+            try {
+                await setDoc(dataDocRef, dataToSave);
+                if (showNotification) {
+                    window.showSaveNotification('✅ Dữ liệu đã được lưu lên đám mây!', 'success');
+                }
+            } catch (error) {
+                console.error("Error saving data to Firestore:", error);
+                if (showNotification) {
+                    window.showSaveNotification('❌ Lỗi khi lưu dữ liệu!', 'error');
+                }
+            }
+        }
+
+        // Debounced auto-save function
+        window.autoSave = function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveData(false);
+                window.showSaveNotification('☁️ Đang đồng bộ...', 'info', 1500);
+            }, 2000);
+        }
+    </script>
+    
+    <script>
+        // This script contains the UI logic functions that are now global
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // Set current date for date pickers
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('attendanceDate').value = today;
+            document.getElementById('dailyStatsDate').value = today;
+            document.getElementById('monthlyStatsDate').value = today.substring(0, 7);
+            
+            setTimeout(() => {
+                window.showSaveNotification('🎉 Chào mừng đến với ứng dụng điểm danh cộng tác!', 'info', 4000);
+            }, 1000);
+        };
+
+        // --- TAB MANAGEMENT ---
+        window.showTab = function(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // --- UI NOTIFICATIONS ---
+        window.showSaveNotification = function(message, type = 'info', duration = 3000) {
+            let notification = document.getElementById('saveNotification');
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'saveNotification';
+                notification.style.cssText = `
+                    position: fixed; top: 20px; right: 20px; padding: 12px 20px;
+                    border-radius: 8px; color: white; font-weight: bold; z-index: 10000;
+                    transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    max-width: 300px; word-wrap: break-word; transform: translateY(-20px); opacity: 0;`;
+                document.body.appendChild(notification);
+            }
+            
+            const colors = {
+                success: 'linear-gradient(135deg, #28a745, #20c997)',
+                error: 'linear-gradient(135deg, #dc3545, #e74c3c)',
+                info: 'linear-gradient(135deg, #17a2b8, #6c757d)'
+            };
+            notification.style.background = colors[type] || 'linear-gradient(135deg, #4facfe, #00f2fe)';
+            
+            notification.textContent = message;
+            
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateY(0)';
+            }, 10);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateY(-20px)';
+            }, duration);
+        }
+
+        // --- EXCEL IMPORT/EXPORT ---
+        window.handleExcelUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (jsonData.length < 2) {
+                        alert('File Excel không có dữ liệu!');
+                        return;
+                    }
+                    
+                    const headers = jsonData[0].map(h => String(h || '').trim().toLowerCase());
+                    const columnMap = findColumnIndexes(headers);
+                    
+                    if (!validateColumns(columnMap)) {
+                        alert('File Excel thiếu các cột bắt buộc: Họ và tên, Lớp, Ngày sinh, Giới tính, Loại học sinh');
+                        return;
+                    }
+                    
+                    window.excelData = jsonData.slice(1).map(row => extractStudentData(row, columnMap)).filter(Boolean);
+                    
+                    if (window.excelData.length > 0) {
+                        document.getElementById('importStatus').textContent = 
+                            `✅ Đã tải ${window.excelData.length} học sinh. Nhấn "Nhập từ Excel" để thêm.`;
+                    } else {
+                        alert('Không tìm thấy dữ liệu hợp lệ trong file Excel!');
+                    }
+                } catch (error) {
+                    console.error('Lỗi đọc file Excel:', error);
+                    alert('Có lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng file!');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function findColumnIndexes(headers) {
+            const variants = {
+                name: ['họ và tên', 'họ tên'],
+                class: ['lớp'],
+                birthDate: ['ngày sinh'],
+                gender: ['giới tính'],
+                type: ['loại học sinh', 'loại']
+            };
+            const columnMap = {};
+            for (const key in variants) {
+                columnMap[key] = headers.findIndex(h => variants[key].some(v => h.includes(v)));
+            }
+            return columnMap;
+        }
+
+        function validateColumns(columnMap) {
+            return Object.values(columnMap).every(index => index !== -1);
+        }
+
+        function extractStudentData(row, columnMap) {
+            const name = String(row[columnMap.name] || '').trim();
+            if (!name) return null;
+            return {
+                name,
+                class: String(row[columnMap.class] || '').trim(),
+                birthDate: parseBirthDate(row[columnMap.birthDate]),
+                gender: normalizeGender(row[columnMap.gender]),
+                type: normalizeStudentType(row[columnMap.type])
+            };
+        }
+
+        function parseBirthDate(dateValue) {
+            if (!dateValue) return '';
+            if (typeof dateValue === 'number') {
+                const date = new Date(Math.round((dateValue - 25569) * 86400 * 1000));
+                return date.toISOString().split('T')[0];
+            }
+            const date = new Date(dateValue);
+            return !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '';
+        }
+
+        function normalizeGender(value) {
+            const str = String(value || '').toLowerCase();
+            if (str.startsWith('nam')) return 'Nam';
+            if (str.startsWith('nữ') || str.startsWith('nu')) return 'Nữ';
+            return '';
+        }
+
+        function normalizeStudentType(value) {
+            const str = String(value || '').toLowerCase();
+            if (str.includes('bán trú')) return 'Bán trú';
+            if (str.includes('không')) return 'Không bán trú';
+            return '';
+        }
+
+        window.importStudentsFromExcel = function() {
+            if (window.excelData.length === 0) {
+                alert('Vui lòng tải file Excel trước!');
+                return;
+            }
+            
+            let addedCount = 0, duplicateCount = 0;
+            window.excelData.forEach(studentData => {
+                if (!studentData.name || !studentData.class) return;
+                const isDuplicate = window.students.some(s => s.name.toLowerCase() === studentData.name.toLowerCase() && s.class.toLowerCase() === studentData.class.toLowerCase());
+                
+                if (!isDuplicate) {
+                    window.students.push({ id: Date.now() + Math.random(), ...studentData });
+                    addedCount++;
+                } else {
+                    duplicateCount++;
+                }
+            });
+            
+            window.autoSave(); // Save changes to Firestore
+            
+            document.getElementById('excelFile').value = '';
+            window.excelData = [];
+            document.getElementById('importStatus').textContent = '';
+            
+            alert(`✅ Nhập thành công ${addedCount} học sinh.\n⚠️ Bỏ qua ${duplicateCount} học sinh trùng lặp.`);
+        }
+
+        window.downloadExcelTemplate = function() {
+            const templateData = [['Họ và tên', 'Lớp', 'Ngày sinh', 'Giới tính', 'Loại học sinh']];
+            const ws = XLSX.utils.aoa_to_sheet(templateData);
+            ws['!cols'] = [{ wch: 25 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, { wch: 18 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Danh sách");
+            XLSX.writeFile(wb, "Mau_danh_sach_hoc_sinh.xlsx");
+        }
+
+        // --- STUDENT MANAGEMENT ---
+        window.addStudent = function() {
+            const name = document.getElementById('studentName').value.trim();
+            const studentClass = document.getElementById('studentClass').value.trim();
+            const birthDate = document.getElementById('studentBirthDate').value;
+            const gender = document.getElementById('studentGender').value;
+            const type = document.getElementById('studentType').value;
+
+            if (!name || !studentClass || !birthDate || !gender || !type) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+
+            window.students.push({ id: Date.now(), name, class: studentClass, birthDate, gender, type });
+            clearStudentForm();
+            window.autoSave();
+        }
+
+        function clearStudentForm() {
+            document.getElementById('studentName').value = '';
+            document.getElementById('studentClass').value = '';
+            document.getElementById('studentBirthDate').value = '';
+            document.getElementById('studentGender').value = '';
+            document.getElementById('studentType').value = '';
+        }
+
+        window.displayStudents = function() {
+            const container = document.getElementById('studentsList');
+            if (window.students.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h3>Chưa có học sinh nào</h3><p>Vui lòng thêm học sinh để bắt đầu.</p></div>`;
+                return;
+            }
+
+            container.innerHTML = window.students.map(student => `
+                <div class="student-item">
+                    <div class="student-info">
+                        <div class="student-detail"><strong>Họ và tên:</strong><span>${student.name}</span></div>
+                        <div class="student-detail"><strong>Lớp:</strong><span>${student.class}</span></div>
+                        <div class="student-detail"><strong>Ngày sinh:</strong><span>${formatDate(student.birthDate)}</span></div>
+                        <div class="student-detail"><strong>Loại:</strong><span>${student.type}</span></div>
+                    </div>
+                    <div class="attendance-controls">
+                        <button class="btn btn-primary" onclick="editStudent(${student.id})">✏️ Sửa</button>
+                        <button class="btn" style="background: #dc3545; color: white;" onclick="deleteStudent(${student.id})">🗑️ Xóa</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.deleteStudent = function(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa học sinh này?')) {
+                window.students = window.students.filter(s => s.id !== id);
+                window.autoSave();
+            }
+        }
+
+        window.editStudent = function(id) {
+            const student = window.students.find(s => s.id === id);
+            if (!student) return;
+
+            document.getElementById('studentName').value = student.name;
+            document.getElementById('studentClass').value = student.class;
+            document.getElementById('studentBirthDate').value = student.birthDate;
+            document.getElementById('studentGender').value = student.gender;
+            document.getElementById('studentType').value = student.type;
+
+            window.students = window.students.filter(s => s.id !== id);
+            window.autoSave();
+            
+            alert('Thông tin học sinh đã được tải lên form. Chỉnh sửa và nhấn "Thêm học sinh" để lưu lại.');
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- ATTENDANCE TRACKING ---
+        window.populateClassFilter = function() {
+            const classFilter = document.getElementById('classFilter');
+            const uniqueClasses = [...new Set(window.students.map(s => s.class))].sort();
+            
+            const currentSelection = classFilter.value;
+
+            classFilter.innerHTML = '<option value="all">Tất cả các lớp</option>';
+            uniqueClasses.forEach(className => {
+                classFilter.innerHTML += `<option value="${className}">${className}</option>`;
+            });
+
+            if (uniqueClasses.includes(currentSelection)) {
+                classFilter.value = currentSelection;
+            }
+        }
+
+        window.loadAttendanceForDate = function() {
+            const selectedDate = document.getElementById('attendanceDate').value;
+            const selectedClass = document.getElementById('classFilter').value;
+            const container = document.getElementById('attendanceList');
+            const title = document.getElementById('attendanceListTitle');
+
+            let filteredStudents = window.students;
+            if (selectedClass && selectedClass !== 'all') {
+                filteredStudents = window.students.filter(student => student.class === selectedClass);
+                title.textContent = `👨‍🎓 Điểm danh học sinh lớp ${selectedClass}`;
+            } else {
+                title.textContent = `👨‍🎓 Điểm danh học sinh (Tất cả)`;
+            }
+            
+            if (filteredStudents.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h3>Không có học sinh nào trong lớp này</h3></div>`;
+                return;
+            }
+
+            const dayRecords = window.attendanceRecords[selectedDate] || {};
+            container.innerHTML = filteredStudents.map(student => {
+                const status = dayRecords[student.id] || 'present';
+                return `
+                    <div class="student-item">
+                        <div class="student-info">
+                            <div class="student-detail"><strong>Họ và tên:</strong><span>${student.name}</span></div>
+                            <div class="student-detail"><strong>Lớp:</strong><span>${student.class}</span></div>
+                            <div class="student-detail"><strong>Trạng thái:</strong>
+                                <span class="attendance-status ${getStatusClass(status)}">${getStatusText(status)}</span>
+                            </div>
+                        </div>
+                        <div class="attendance-controls">
+                            <button class="btn btn-success" style="padding: 8px 12px; font-size: 0.9rem;" onclick="markAttendance(${student.id}, 'present')">✅ Có mặt</button>
+                            <button class="btn" style="background: #ffc107; color: black; padding: 8px 12px; font-size: 0.9rem;" onclick="markAttendance(${student.id}, 'late')">⏰ Muộn</button>
+                            <button class="btn" style="background: #6c757d; color: white; padding: 8px 12px; font-size: 0.9rem;" onclick="markAttendance(${student.id}, 'absent_excused')">📋 Vắng CP</button>
+                            <button class="btn" style="background: #dc3545; color: white; padding: 8px 12px; font-size: 0.9rem;" onclick="markAttendance(${student.id}, 'absent_unexcused')">❌ Vắng KP</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.markAttendance = function(studentId, status) {
+            const selectedDate = document.getElementById('attendanceDate').value;
+            if (!window.attendanceRecords[selectedDate]) {
+                window.attendanceRecords[selectedDate] = {};
+            }
+            window.attendanceRecords[selectedDate][studentId] = status;
+            window.autoSave();
+        }
+
+        window.markAllPresent = function() {
+            const selectedDate = document.getElementById('attendanceDate').value;
+            const selectedClass = document.getElementById('classFilter').value;
+
+            let studentsToMark = window.students;
+             if (selectedClass && selectedClass !== 'all') {
+                studentsToMark = window.students.filter(student => student.class === selectedClass);
+            }
+
+            if (studentsToMark.length === 0) {
+                alert("Không có học sinh nào để điểm danh trong lớp đã chọn.");
+                return;
+            }
+            
+            if (!window.attendanceRecords[selectedDate]) {
+                window.attendanceRecords[selectedDate] = {};
+            }
+            studentsToMark.forEach(student => {
+                window.attendanceRecords[selectedDate][student.id] = 'present';
+            });
+            
+            window.autoSave();
+            alert(`Đã điểm danh tất cả ${studentsToMark.length} học sinh có mặt!`);
+        }
+
+        // --- STATISTICS ---
+        window.loadDailyStats = function() {
+            const selectedDate = document.getElementById('dailyStatsDate').value;
+            const stats = calculateDayStats(window.attendanceRecords[selectedDate] || {});
+
+            document.getElementById('dailyStatsGrid').innerHTML = `
+                <div class="stats-card"><h4>Tổng số</h4><div class="number">${stats.total}</div></div>
+                <div class="stats-card"><h4>Có mặt</h4><div class="number" style="color: #28a745;">${stats.present}</div></div>
+                <div class="stats-card"><h4>Đi muộn</h4><div class="number" style="color: #ffc107;">${stats.late}</div></div>
+                <div class="stats-card"><h4>Vắng KP</h4><div class="number" style="color: #dc3545;">${stats.absent_unexcused}</div></div>
+                <div class="stats-card"><h4>Vắng CP</h4><div class="number" style="color: #6c757d;">${stats.absent_excused}</div></div>
+                <div class="stats-card"><h4>Tổng vắng</h4><div class="number">${stats.absent_total}</div></div>
+            `;
+
+            const dayRecords = window.attendanceRecords[selectedDate] || {};
+            const detailsHtml = window.students.map(student => {
+                const status = dayRecords[student.id] || 'present';
+                return `
+                    <div class="student-item">
+                        <div class="student-info">
+                            <div class="student-detail"><strong>Họ và tên:</strong><span>${student.name}</span></div>
+                             <div class="student-detail"><strong>Lớp:</strong><span>${student.class}</span></div>
+                            <div class="student-detail"><strong>Trạng thái:</strong>
+                                <span class="attendance-status ${getStatusClass(status)}">${getStatusText(status)}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+            document.getElementById('dailyStatsList').innerHTML = `<h3>Chi tiết ngày ${formatDate(selectedDate)}</h3>${detailsHtml}`;
+        }
+
+        window.loadMonthlyStats = function() {
+            const selectedMonth = document.getElementById('monthlyStatsDate').value;
+            if (!selectedMonth) return;
+            const [year, month] = selectedMonth.split('-');
+            const stats = calculateMonthlyStats(year, month);
+
+            document.getElementById('monthlyStatsGrid').innerHTML = `
+                <div class="stats-card"><h4>Tổng lượt có mặt</h4><div class="number" style="color: #28a745;">${stats.totalPresent}</div></div>
+                <div class="stats-card"><h4>Tổng lượt muộn</h4><div class="number" style="color: #ffc107;">${stats.totalLate}</div></div>
+                <div class="stats-card"><h4>Tổng lượt vắng KP</h4><div class="number" style="color: #dc3545;">${stats.totalAbsentUnexcused}</div></div>
+                <div class="stats-card"><h4>Tổng lượt vắng CP</h4><div class="number" style="color: #6c757d;">${stats.totalAbsentExcused}</div></div>
+            `;
+
+            const detailsHtml = Object.values(stats.studentData).map(data => {
+                const student = data.student;
+                return `
+                    <div class="student-item">
+                        <div class="student-info">
+                            <div class="student-detail"><strong>Họ và tên:</strong><span>${student.name}</span></div>
+                            <div class="student-detail"><strong>Có mặt:</strong><span style="color: #28a745;">${data.present}</span></div>
+                            <div class="student-detail"><strong>Muộn:</strong><span style="color: #ffc107;">${data.late}</span></div>
+                            <div class="student-detail"><strong>Vắng KP:</strong><span style="color: #dc3545;">${data.absent_unexcused}</span></div>
+                            <div class="student-detail"><strong>Vắng CP:</strong><span style="color: #6c757d;">${data.absent_excused}</span></div>
+                        </div>
+                    </div>`;
+            }).join('');
+            document.getElementById('monthlyStatsList').innerHTML = `<h3>Chi tiết tháng ${month}/${year}</h3>${detailsHtml}`;
+        }
+
+        // --- UTILITY & HELPER FUNCTIONS ---
+        function getStatusClass(status) {
+            return { 
+                present: 'status-present', 
+                late: 'status-late', 
+                absent_unexcused: 'status-absent-unexcused',
+                absent_excused: 'status-absent-excused'
+            }[status] || 'status-present';
+        }
+
+        function getStatusText(status) {
+            return { 
+                present: '✅ Có mặt', 
+                late: '⏰ Muộn', 
+                absent_unexcused: '❌ Vắng KP',
+                absent_excused: '📋 Vắng CP'
+            }[status] || '✅ Có mặt';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+                const correctedDate = new Date(date.getTime() + userTimezoneOffset);
+                return correctedDate.toLocaleDateString('vi-VN');
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        function calculateDayStats(dayRecords) {
+            const stats = { 
+                total: window.students.length, 
+                present: 0, 
+                late: 0, 
+                absent_unexcused: 0, 
+                absent_excused: 0,
+                absent_total: 0
+            };
+            window.students.forEach(student => {
+                const status = dayRecords[student.id] || 'present';
+                if(stats.hasOwnProperty(status)) {
+                    stats[status]++;
+                }
+            });
+            stats.absent_total = stats.absent_unexcused + stats.absent_excused;
+            return stats;
+        }
+
+        // **MODIFIED**: This function now only counts weekdays
+        function calculateMonthlyStats(year, month) {
+            const studentData = {};
+            window.students.forEach(s => {
+                studentData[s.id] = { 
+                    student: s, present: 0, late: 0, absent_unexcused: 0, absent_excused: 0
+                };
+            });
+            
+            const daysInMonth = new Date(year, month, 0).getDate();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month - 1, day);
+                const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+
+                // Only count weekdays (Monday to Friday)
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayRecords = window.attendanceRecords[dateStr] || {};
+                    window.students.forEach(student => {
+                        if (studentData[student.id]) {
+                            // Assume 'present' if no record exists for a weekday
+                            const status = dayRecords[student.id] || 'present';
+                            if(studentData[student.id].hasOwnProperty(status)){
+                                studentData[student.id][status]++;
+                            }
+                        }
+                    });
+                }
+            }
+            
+            let totalPresent = 0, totalLate = 0, totalAbsentUnexcused = 0, totalAbsentExcused = 0;
+            Object.values(studentData).forEach(data => {
+                totalPresent += data.present;
+                totalLate += data.late;
+                totalAbsentUnexcused += data.absent_unexcused;
+                totalAbsentExcused += data.absent_excused;
+            });
+
+            return { studentData, totalPresent, totalLate, totalAbsentUnexcused, totalAbsentExcused };
+        }
+
+        // --- EXPORT TO EXCEL FUNCTIONS ---
+        window.exportAttendanceToExcel = function() {
+            const selectedDate = document.getElementById('attendanceDate').value;
+            const dayRecords = window.attendanceRecords[selectedDate] || {};
+            const data = window.students.map((s, i) => ({
+                'STT': i + 1,
+                'Họ và tên': s.name,
+                'Lớp': s.class,
+                'Trạng thái': getStatusText(dayRecords[s.id] || 'present')
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "DiemDanh");
+            XLSX.writeFile(wb, `Diem_danh_${selectedDate}.xlsx`);
+        }
+        
+        window.exportDailyStatsToExcel = function() {
+            const selectedDate = document.getElementById('dailyStatsDate').value;
+            if (!selectedDate) {
+                alert('Vui lòng chọn ngày để xuất thống kê!');
+                return;
+            }
+
+            const stats = calculateDayStats(window.attendanceRecords[selectedDate] || {});
+            const dayRecords = window.attendanceRecords[selectedDate] || {};
+
+            const wb = XLSX.utils.book_new();
+
+            // Summary Sheet
+            const summaryData = [
+                ["Thống kê tổng quan ngày", formatDate(selectedDate)],
+                [],
+                ["Hạng mục", "Số lượng"],
+                ["Tổng số học sinh", stats.total],
+                ["Có mặt", stats.present],
+                ["Đi muộn", stats.late],
+                ["Vắng không phép (KP)", stats.absent_unexcused],
+                ["Vắng có phép (CP)", stats.absent_excused],
+                ["Tổng số vắng", stats.absent_total]
+            ];
+            const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+            ws1['!cols'] = [{ wch: 25 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, ws1, "Tổng quan");
+
+            // Detail Sheet
+            const detailData = window.students.map((student, index) => ({
+                'STT': index + 1,
+                'Họ và tên': student.name,
+                'Lớp': student.class,
+                'Trạng thái': getStatusText(dayRecords[student.id] || 'present')
+            }));
+            const ws2 = XLSX.utils.json_to_sheet(detailData);
+             ws2['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 10 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, ws2, "Chi tiết");
+
+            XLSX.writeFile(wb, `Thong_ke_ngay_${selectedDate}.xlsx`);
+        }
+
+        window.exportMonthlyStatsToExcel = function() {
+            const selectedMonth = document.getElementById('monthlyStatsDate').value;
+            if (!selectedMonth) {
+                alert('Vui lòng chọn tháng để xuất thống kê!');
+                return;
+            }
+            const [year, month] = selectedMonth.split('-');
+            const stats = calculateMonthlyStats(year, month);
+
+            const wb = XLSX.utils.book_new();
+
+            // Summary Sheet
+            const summaryData = [
+                ["Thống kê tổng quan tháng", `${month}/${year}`],
+                ["(Chỉ tính các ngày từ Thứ 2 - Thứ 6)"],
+                [],
+                ["Hạng mục", "Tổng số lượt"],
+                ["Tổng lượt có mặt", stats.totalPresent],
+                ["Tổng lượt đi muộn", stats.totalLate],
+                ["Tổng lượt vắng không phép (KP)", stats.totalAbsentUnexcused],
+                ["Tổng lượt vắng có phép (CP)", stats.totalAbsentExcused]
+            ];
+            const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+            ws1['!cols'] = [{ wch: 35 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, ws1, "Tổng quan tháng");
+
+            // Detail Sheet
+            const detailData = Object.values(stats.studentData).map((data, index) => ({
+                'STT': index + 1,
+                'Họ và tên': data.student.name,
+                'Lớp': data.student.class,
+                'Có mặt': data.present,
+                'Đi muộn': data.late,
+                'Vắng KP': data.absent_unexcused,
+                'Vắng CP': data.absent_excused
+            }));
+            const ws2 = XLSX.utils.json_to_sheet(detailData);
+            ws2['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+            XLSX.utils.book_append_sheet(wb, ws2, "Chi tiết tháng");
+
+            XLSX.writeFile(wb, `Thong_ke_thang_${month}_${year}.xlsx`);
+        }
+
+        // --- MISC UI FUNCTIONS ---
+        window.showSaveLog = function() {
+            alert("Nhật ký lưu:\nDữ liệu của bạn được lưu và đồng bộ tự động lên đám mây. Mọi người dùng chung App ID sẽ thấy cùng một dữ liệu.");
+        }
+    </script>
+</body>
+</html>
