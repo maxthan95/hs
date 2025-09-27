@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>NV Điểm danh - Thống kê nâng cấp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Thư viện đọc Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- Thư viện xuất PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafb;
+      margin: 0;
+      padding: 20px;
+      color: #111827;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #4f46e5;
+    }
+    .upload-box, .filter-box, .export-box {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input[type="file"], select, button {
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      margin: 4px;
+    }
+    button {
+      cursor: pointer;
+      background: #4f46e5;
+      color: white;
+      font-weight: bold;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px 12px;
+      text-align: center;
+    }
+    th {
+      background: #4f46e5;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f3f4f6;
+    }
+    #output {
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Thống kê điểm danh lớp học</h1>
+
+  <div class="upload-box">
+    <p>Chọn file Excel sổ điểm danh (.xlsx, .xls):</p>
+    <input type="file" id="upload" accept=".xlsx,.xls" />
+  </div>
+
+  <div class="filter-box">
+    <label for="month">Lọc theo tháng:</label>
+    <select id="month">
+      <option value="all">Tất cả</option>
+      <option value="1">Tháng 1</option>
+      <option value="2">Tháng 2</option>
+      <option value="3">Tháng 3</option>
+      <option value="4">Tháng 4</option>
+      <option value="5">Tháng 5</option>
+      <option value="6">Tháng 6</option>
+      <option value="7">Tháng 7</option>
+      <option value="8">Tháng 8</option>
+      <option value="9">Tháng 9</option>
+      <option value="10">Tháng 10</option>
+      <option value="11">Tháng 11</option>
+      <option value="12">Tháng 12</option>
+    </select>
+    <button onclick="applyFilter()">Áp dụng</button>
+  </div>
+
+  <div class="export-box">
+    <button onclick="exportExcel()">Xuất Excel</button>
+    <button onclick="exportPDF()">Xuất PDF</button>
+  </div>
+
+  <div id="output">
+    <p><i>Chưa có dữ liệu. Vui lòng tải file Excel để xem thống kê.</i></p>
+  </div>
+
+  <script>
+    let originalData = []; // dữ liệu gốc từ Excel
+
+    document.getElementById('upload').addEventListener('change', handleFile, false);
+
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, {header:1});
+        originalData = json;
+        renderTable(json);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderTable(json) {
+      let table = '<table><tr><th>STT</th><th>Họ tên</th><th>Tổng buổi nghỉ</th><th>Tổng tiết nghỉ</th></tr>';
+      for (let i = 1; i < json.length; i++) {
+        const row = json[i];
+        if (!row || !row[2]) continue; // bỏ dòng trống
+        const stt = row[0] || '';
+        const name = row[2] + ' ' + (row[3] || '');
+        const tongBuoi = row[6] || 0; // cột "TS Buổi nghỉ"
+        const tongTiet = row[7] || 0; // cột "TS Tiết nghỉ"
+        table += `<tr><td>${stt}</td><td>${name}</td><td>${tongBuoi}</td><td>${tongTiet}</td></tr>`;
+      }
+      table += '</table>';
+      document.getElementById('output').innerHTML = table;
+    }
+
+    function applyFilter() {
+      const month = document.getElementById('month').value;
+      if (month === 'all') {
+        renderTable(originalData);
+        return;
+      }
+      // Giả sử cột 5 (index=4) là ngày tháng (dd/mm/yyyy)
+      const filtered = [originalData[0]];
+      for (let i = 1; i < originalData.length; i++) {
+        const row = originalData[i];
+        if (!row || !row[4]) continue;
+        const dateStr = row[4];
+        const parts = dateStr.toString().split('/');
+        if (parts.length >= 2 && parseInt(parts[1]) == month) {
+          filtered.push(row);
+        }
+      }
+      renderTable(filtered);
+    }
+
+    function exportExcel() {
+      const table = document.querySelector("#output table");
+      if (!table) return alert("Chưa có dữ liệu để xuất");
+      const wb = XLSX.utils.table_to_book(table, {sheet:"Thống kê"});
+      XLSX.writeFile(wb, "thong_ke_diem_danh.xlsx");
+    }
+
+    function exportPDF() {
+      const table = document.querySelector("#output table");
+      if (!table) return alert("Chưa có dữ liệu để xuất");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('l', 'pt', 'a4');
+      doc.html(table, {
+        callback: function (doc) {
+          doc.save("thong_ke_diem_danh.pdf");
+        },
+        x: 20,
+        y: 20
+      });
+    }
+  </script>
+</body>
+</html>
