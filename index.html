@@ -4,509 +4,103 @@
   <meta charset="UTF-8">
   <title>Phần mềm điểm danh học sinh</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Thư viện đọc/ghi Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getDatabase, ref, set, onValue } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    // TODO: Thay cấu hình này bằng config Firebase của bạn
+    const firebaseConfig = {
+      apiKey: "API_KEY",
+      authDomain: "PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "PROJECT_ID",
+      storageBucket: "PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    // Khởi tạo Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // Đăng nhập
+    document.addEventListener("DOMContentLoaded", () => {
+      const loginForm = document.getElementById("loginForm");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email").value;
+        const pass = document.getElementById("password").value;
+        signInWithEmailAndPassword(auth, email, pass)
+          .then(() => {
+            alert("Đăng nhập thành công!");
+          })
+          .catch(err => alert("Lỗi: " + err.message));
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        signOut(auth);
+      });
+
+      // Theo dõi trạng thái đăng nhập
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          document.getElementById("authSection").style.display = "none";
+          document.getElementById("appSection").style.display = "block";
+        } else {
+          document.getElementById("authSection").style.display = "block";
+          document.getElementById("appSection").style.display = "none";
+        }
+      });
+    });
+
+    // Ví dụ hàm lưu điểm danh vào Firebase
+    window.saveAttendance = function(date, cls, session, records) {
+      set(ref(db, `attendance/${cls}/${date}/${session}`), records);
+    };
+
+    // Ví dụ hàm lắng nghe realtime
+    window.listenAttendance = function(date, cls, session, callback) {
+      const attendanceRef = ref(db, `attendance/${cls}/${date}/${session}`);
+      onValue(attendanceRef, (snapshot) => {
+        callback(snapshot.val());
+      });
+    };
+  </script>
   <style>
-    :root {
-      --primary: #4f46e5;
-      --bg: #f9fafb;
-      --card: #ffffff;
-      --border: #e5e7eb;
-      --head: #eef2ff;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: #111827; }
-    nav { background: var(--primary); color: white; display: flex; gap: 8px; flex-wrap: wrap; padding: 10px; position: sticky; top: 0; z-index: 10; }
-    nav button { background: transparent; border: none; color: white; font-weight: 700; padding: 8px 12px; cursor: pointer; border-radius: 6px; }
-    nav button:hover, nav button.active { background: rgba(255,255,255,0.15); }
-    .container { padding: 16px; }
-    .tab { display: none; }
-    .tab.active { display: block; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-    h2 { margin: 0 0 12px; color: var(--primary); font-size: 20px; }
-    h3 { margin: 0 0 8px; color: #1f2937; font-size: 16px; }
-    label { display: inline-flex; align-items: center; gap: 8px; margin: 6px 10px 6px 0; }
-    input[type="text"], input[type="date"], input[type="month"], select, input[type="tel"] {
-      border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: #fff;
-    }
-    input[type="file"] { margin: 8px 0; }
-    button.primary { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: 700; }
-    button.secondary { background: #111827; color: white; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-    table { width: 100%; border-collapse: collapse; background: #fff; }
-    th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
-    th { background: var(--head); }
-    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-    .muted { color: #6b7280; }
-    .flex { display: flex; gap: 8px; flex-wrap: wrap; }
-    .spacer { height: 8px; }
+    body { font-family: Arial, sans-serif; margin: 0; background:#f9fafb; }
+    h2 { color:#4f46e5; }
+    .card { background:#fff; padding:20px; margin:20px auto; max-width:500px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    input { display:block; width:100%; margin:10px 0; padding:10px; border:1px solid #ccc; border-radius:6px; }
+    button { padding:10px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
+    button.primary { background:#4f46e5; color:white; }
+    #appSection { display:none; padding:20px; }
   </style>
 </head>
 <body>
-  <nav id="topnav"></nav>
-  <div class="container">
-
-    <!-- Quản lý học sinh -->
-    <section id="tab-students" class="tab active">
-      <div class="card">
-        <h2>Quản lý học sinh</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>Tải danh sách từ Excel</h3>
-            <p class="muted">Định dạng cột: Họ tên | Ngày sinh | Giới tính | Lớp | Loại (bán trú/không bán trú) | SĐT phụ huynh</p>
-            <input type="file" id="uploadStudents" accept=".xlsx,.xls">
-            <div class="spacer"></div>
-            <button class="secondary" id="exportStudents">Xuất danh sách học sinh (Excel)</button>
-          </div>
-          <div class="card">
-            <h3>Thêm học sinh thủ công</h3>
-            <div class="flex">
-              <input type="text" id="stName" placeholder="Họ tên">
-              <input type="text" id="stDob" placeholder="Ngày sinh (dd/mm/yyyy)">
-              <input type="text" id="stGender" placeholder="Giới tính">
-              <input type="text" id="stClass" placeholder="Lớp (ví dụ: 6A1)">
-              <select id="stType">
-                <option value="bán trú">Bán trú</option>
-                <option value="không bán trú">Không bán trú</option>
-              </select>
-              <input type="tel" id="stPhone" placeholder="SĐT phụ huynh">
-              <button class="primary" id="addStudent">Thêm</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Danh sách học sinh</h3>
-        <div id="studentTable"></div>
-      </div>
-    </section>
-
-    <!-- Điểm danh -->
-    <section id="tab-attendance" class="tab">
-      <div class="card">
-        <h2>Điểm danh theo buổi</h2>
-        <div class="flex">
-          <label>Ngày: <input type="date" id="attDate"></label>
-          <label>Lớp:
-            <select id="attClass"></select>
-          </label>
-          <label>Buổi:
-            <select id="attSession">
-              <option value="morning">Sáng</option>
-              <option value="afternoon">Chiều</option>
-            </select>
-          </label>
-          <button class="primary" id="showAttendance">Hiển thị</button>
-          <button class="secondary" id="saveAttendance">Lưu</button>
-          <button class="secondary" id="exportAttendance">Xuất điểm danh (Excel)</button>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Danh sách điểm danh</h3>
-        <p class="muted">Chọn một trạng thái: Có mặt / Vắng không phép / Vắng có phép</p>
-        <div id="attendanceTable"></div>
-      </div>
-    </section>
-
-    <!-- Thống kê hàng ngày -->
-    <section id="tab-daily" class="tab">
-      <div class="card">
-        <h2>Thống kê hàng ngày</h2>
-        <div class="flex">
-          <label>Ngày: <input type="date" id="dailyDate"></label>
-          <label>Lớp:
-            <select id="dailyClass"></select>
-          </label>
-          <label>Buổi:
-            <select id="dailySession">
-              <option value="morning">Sáng</option>
-              <option value="afternoon">Chiều</option>
-            </select>
-          </label>
-          <button class="primary" id="btnDaily">Xem thống kê</button>
-          <button class="secondary" id="exportDaily">Xuất thống kê ngày (Excel)</button>
-        </div>
-      </div>
-      <div class="card">
-        <div id="dailyStats"></div>
-      </div>
-    </section>
-
-    <!-- Thống kê theo tháng -->
-    <section id="tab-monthly" class="tab">
-      <div class="card">
-        <h2>Thống kê theo tháng</h2>
-        <div class="flex">
-          <label>Tháng: <input type="month" id="monthSelect"></label>
-          <label>Lớp:
-            <select id="monthClass"></select>
-          </label>
-          <button class="primary" id="btnMonthly">Xem thống kê</button>
-          <button class="secondary" id="exportMonthly">Xuất thống kê tháng (Excel)</button>
-        </div>
-      </div>
-      <div class="card">
-        <div id="monthlyStats"></div>
-      </div>
-    </section>
-
-    <!-- Đọc thống kê từ Excel -->
-    <section id="tab-import" class="tab">
-      <div class="card">
-        <h2>Đọc thống kê từ Excel</h2>
-        <p class="muted">Tải file Excel thống kê/điểm danh để xem dưới dạng bảng.</p>
-        <input type="file" id="uploadStats" accept=".xlsx,.xls">
-      </div>
-      <div class="card">
-        <div id="importTable"></div>
-      </div>
-    </section>
-
+  <!-- Đăng nhập -->
+  <div id="authSection" class="card">
+    <h2>Đăng nhập giáo viên</h2>
+    <form id="loginForm">
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="password" placeholder="Mật khẩu" required>
+      <button type="submit" class="primary">Đăng nhập</button>
+    </form>
   </div>
 
-  <script>
-    // ---------- Trạng thái & Lưu trữ ----------
-    const LS_STUDENTS = 'nv_students';
-    const LS_ATTENDANCE = 'nv_attendance';
-    let students = safeParse(localStorage.getItem(LS_STUDENTS), []);
-    let attendanceRecords = safeParse(localStorage.getItem(LS_ATTENDANCE), {});
-
-    function safeParse(str, fallback) {
-      try { return JSON.parse(str || ''); } catch { return fallback; }
-    }
-
-    // ---------- Nav ----------
-    const tabs = [
-      { id: 'tab-students', label: 'Quản lý học sinh' },
-      { id: 'tab-attendance', label: 'Điểm danh' },
-      { id: 'tab-daily', label: 'Thống kê hàng ngày' },
-      { id: 'tab-monthly', label: 'Thống kê theo tháng' },
-      { id: 'tab-import', label: 'Đọc thống kê' },
-    ];
-    const nav = document.getElementById('topnav');
-    tabs.forEach((t, idx) => {
-      const btn = document.createElement('button');
-      btn.textContent = t.label;
-      btn.className = idx === 0 ? 'active' : '';
-      btn.onclick = () => showTab(t.id, btn);
-      nav.appendChild(btn);
-    });
-    function showTab(id, btnRef) {
-      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-      nav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-      if (btnRef) btnRef.classList.add('active');
-      syncClassSelectors();
-      initDefaultsIfNeeded();
-    }
-
-    // ---------- Helpers ----------
-    function saveStudents() { localStorage.setItem(LS_STUDENTS, JSON.stringify(students)); }
-    function saveAttendance() { localStorage.setItem(LS_ATTENDANCE, JSON.stringify(attendanceRecords)); }
-    function uniqueClasses() { return Array.from(new Set(students.map(s => s.class).filter(Boolean))).sort(); }
-    function todayISO() {
-      const d = new Date();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${d.getFullYear()}-${m}-${day}`;
-    }
-    function currentMonthISO() {
-      const d = new Date();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      return `${d.getFullYear()}-${m}`;
-    }
-    function syncClassSelectors() {
-      const classes = uniqueClasses();
-      ['attClass','dailyClass','monthClass'].forEach(id => {
-        const sel = document.getElementById(id);
-        if (!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '';
-        classes.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c; opt.textContent = c;
-          sel.appendChild(opt);
-        });
-        if (classes.length) sel.value = current && classes.includes(current) ? current : classes[0];
-      });
-    }
-    function toExcel(tableEl, filename, sheetName='Sheet1') {
-      const wb = XLSX.utils.table_to_book(tableEl, { sheet: sheetName });
-      XLSX.writeFile(wb, filename);
-    }
-
-    // ---------- Quản lý học sinh ----------
-    document.getElementById('uploadStudents').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = evt => {
-        const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: 'array' });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        students = json.slice(1).map(r => ({
-          name: r[0] || '',
-          dob: r[1] || '',
-          gender: r[2] || '',
-          class: r[3] || '',
-          type: normalizeType(r[4]),
-          parentPhone: r[5] || ''
-        })).filter(s => s.name && s.class);
-        saveStudents();
-        renderStudents();
-        syncClassSelectors();
-      };
-      reader.readAsArrayBuffer(file);
-    });
-
-    function normalizeType(val) {
-      const s = String(val || '').toLowerCase();
-      if (s.includes('bán')) return 'bán trú';
-      if (s.includes('không')) return 'không bán trú';
-      return 'không bán trú';
-    }
-
-    document.getElementById('addStudent').addEventListener('click', () => {
-      const s = {
-        name: document.getElementById('stName').value.trim(),
-        dob: document.getElementById('stDob').value.trim(),
-        gender: document.getElementById('stGender').value.trim(),
-        class: document.getElementById('stClass').value.trim(),
-        type: document.getElementById('stType').value,
-        parentPhone: document.getElementById('stPhone').value.trim()
-      };
-      if (!s.name || !s.class) return alert('Cần nhập tối thiểu Họ tên và Lớp');
-      students.push(s);
-      saveStudents();
-      renderStudents();
-      syncClassSelectors();
-      ['stName','stDob','stGender','stClass','stPhone'].forEach(id => document.getElementById(id).value = '');
-    });
-
-    document.getElementById('exportStudents').addEventListener('click', () => {
-      const table = document.querySelector('#studentTable table');
-      if (!table) return alert('Chưa có dữ liệu để xuất');
-      toExcel(table, 'danh_sach_hoc_sinh.xlsx', 'Học sinh');
-    });
-
-    function renderStudents() {
-      if (!students.length) {
-        document.getElementById('studentTable').innerHTML = '<p class="muted">Chưa có dữ liệu học sinh.</p>';
-        return;
-      }
-      let html = '<table><tr><th>Họ tên</th><th>Ngày sinh</th><th>Giới tính</th><th>Lớp</th><th>Loại</th><th>SĐT phụ huynh</th></tr>';
-      students.forEach(s => {
-        html += `<tr>
-          <td style="text-align:left">${s.name}</td>
-          <td>${s.dob}</td>
-          <td>${s.gender}</td>
-          <td>${s.class}</td>
-          <td>${s.type}</td>
-          <td>${s.parentPhone || ''}</td>
-        </tr>`;
-      });
-      html += '</table>';
-      document.getElementById('studentTable').innerHTML = html;
-    }
-
-    // ---------- Điểm danh ----------
-    document.getElementById('showAttendance').addEventListener('click', renderAttendance);
-    document.getElementById('saveAttendance').addEventListener('click', () => {
-      saveAttendance();
-      alert('Đã lưu điểm danh.');
-    });
-    document.getElementById('exportAttendance').addEventListener('click', () => {
-      const table = document.querySelector('#attendanceTable table');
-      if (!table) return alert('Chưa có dữ liệu để xuất');
-      toExcel(table, 'diem_danh.xlsx', 'Điểm danh');
-    });
-
-    function renderAttendance() {
-      const cls = document.getElementById('attClass').value;
-      const date = document.getElementById('attDate').value;
-      const session = document.getElementById('attSession').value;
-      if (!cls || !date) return alert('Vui lòng chọn Ngày và Lớp');
-      const key = `${date}|${cls}|${session}`;
-
-      if (!attendanceRecords[key]) {
-        attendanceRecords[key] = students.filter(s => s.class === cls)
-          .map(s => ({ name: s.name, class: s.class, type: s.type, status: 'present' }));
-      }
-
-      let html = '<table><tr><th>Họ tên</th><th>Có mặt</th><th>Vắng KP</th><th>Vắng CP</th></tr>';
-      attendanceRecords[key].forEach((s, i) => {
-        const group = `st_${key}_${i}`; // đảm bảo unique theo key+i
-        html += `<tr>
-          <td style="text-align:left">${s.name}</td>
-          <td><input type="radio" name="${group}" ${s.status === 'present' ? 'checked' : ''} onchange="setStatus('${key}',${i},'present')"></td>
-          <td><input type="radio" name="${group}" ${s.status === 'absent_np' ? 'checked' : ''} onchange="setStatus('${key}',${i},'absent_np')"></td>
-          <td><input type="radio" name="${group}" ${s.status === 'absent_cp' ? 'checked' : ''} onchange="setStatus('${key}',${i},'absent_cp')"></td>
-        </tr>`;
-      });
-      html += '</table>';
-      document.getElementById('attendanceTable').innerHTML = html;
-    }
-    window.setStatus = (key, i, val) => { if (attendanceRecords[key]) attendanceRecords[key][i].status = val; };
-
-    // ---------- Thống kê hàng ngày ----------
-    document.getElementById('btnDaily').addEventListener('click', showDailyStats);
-    document.getElementById('exportDaily').addEventListener('click', () => {
-      const table = document.querySelector('#dailyStats table');
-      if (!table) return alert('Chưa có dữ liệu để xuất');
-      toExcel(table, 'thong_ke_ngay.xlsx', 'Thống kê ngày');
-    });
-
-    function showDailyStats() {
-      const date = document.getElementById('dailyDate').value;
-      const cls = document.getElementById('dailyClass').value;
-      const session = document.getElementById('dailySession').value;
-      if (!date || !cls) return alert('Vui lòng chọn Ngày và Lớp');
-      const key = `${date}|${cls}|${session}`;
-      const recs = attendanceRecords[key] || [];
-      const total = recs.length;
-      const present = recs.filter(r => r.status === 'present').length;
-      const absentNP = recs.filter(r => r.status === 'absent_np').length;
-      const absentCP = recs.filter(r => r.status === 'absent_cp').length;
-
-      const banTru = recs.filter(r => r.type === 'bán trú');
-      const kbt = recs.filter(r => r.type !== 'bán trú');
-
-      const btPresent = banTru.filter(r => r.status === 'present').length;
-      const btNP = banTru.filter(r => r.status === 'absent_np').length;
-      const btCP = banTru.filter(r => r.status === 'absent_cp').length;
-
-      const kbtPresent = kbt.filter(r => r.status === 'present').length;
-      const kbtNP = kbt.filter(r => r.status === 'absent_np').length;
-      const kbtCP = kbt.filter(r => r.status === 'absent_cp').length;
-
-      let html = `
-        <h3>Kết quả ngày ${date} — Lớp ${cls} (${session === 'morning' ? 'Sáng' : 'Chiều'})</h3>
-        <table>
-          <tr><th>Chỉ tiêu</th><th>Tổng</th><th>Bán trú</th><th>Không bán trú</th></tr>
-          <tr><td>Tổng số học sinh</td><td>${total}</td><td>${banTru.length}</td><td>${kbt.length}</td></tr>
-          <tr><td>Có mặt</td><td>${present}</td><td>${btPresent}</td><td>${kbtPresent}</td></tr>
-          <tr><td>Vắng không phép</td><td>${absentNP}</td><td>${btNP}</td><td>${kbtNP}</td></tr>
-          <tr><td>Vắng có phép</td><td>${absentCP}</td><td>${btCP}</td><td>${kbtCP}</td></tr>
-        </table>
-      `;
-      document.getElementById('dailyStats').innerHTML = html;
-    }
-
-    // ---------- Thống kê theo tháng ----------
-    document.getElementById('btnMonthly').addEventListener('click', showMonthlyStats);
-    document.getElementById('exportMonthly').addEventListener('click', () => {
-      const table = document.querySelector('#monthlyStats table');
-      if (!table) return alert('Chưa có dữ liệu để xuất');
-      toExcel(table, 'thong_ke_thang.xlsx', 'Thống kê tháng');
-    });
-
-    function showMonthlyStats() {
-      const month = document.getElementById('monthSelect').value; // yyyy-mm
-      const cls = document.getElementById('monthClass').value;
-      if (!month || !cls) return alert('Vui lòng chọn Tháng và Lớp');
-
-      const statsByStudent = {};
-      for (const key in attendanceRecords) {
-        const parts = key.split('|'); // [dateStr, classStr, session]
-        const dateStr = parts[0] || '';
-        const classStr = parts[1] || '';
-        if (classStr !== cls) continue;
-        if (!dateStr.startsWith(month)) continue;
-        attendanceRecords[key].forEach(r => {
-          const nm = r.name;
-          if (!statsByStudent[nm]) statsByStudent[nm] = { type: r.type, present: 0, absentNP: 0, absentCP: 0 };
-          if (r.status === 'present') statsByStudent[nm].present++;
-          else if (r.status === 'absent_np') statsByStudent[nm].absentNP++;
-          else if (r.status === 'absent_cp') statsByStudent[nm].absentCP++;
-        });
-      }
-
-      const rows = Object.entries(statsByStudent).map(([name, s]) => ({ name, ...s }));
-      rows.sort((a,b)=>a.name.localeCompare(b.name, 'vi'));
-
-      const btRows = rows.filter(r => r.type === 'bán trú');
-      const kbtRows = rows.filter(r => r.type !== 'bán trú');
-      const sum = arr => arr.reduce((acc, r) => ({
-        present: acc.present + r.present,
-        absentNP: acc.absentNP + r.absentNP,
-        absentCP: acc.absentCP + r.absentCP
-      }), { present: 0, absentNP: 0, absentCP: 0 });
-
-      const btSum = sum(btRows);
-      const kbtSum = sum(kbtRows);
-      const totalSum = sum(rows);
-
-      let html = `<h3>Thống kê tháng ${month} — Lớp ${cls}</h3>`;
-      html += '<table><tr><th>Họ tên</th><th>Loại</th><th>Có mặt</th><th>Vắng KP</th><th>Vắng CP</th></tr>';
-      rows.forEach(r => {
-        html += `<tr><td style="text-align:left">${r.name}</td><td>${r.type}</td><td>${r.present}</td><td>${r.absentNP}</td><td>${r.absentCP}</td></tr>`;
-      });
-      html += '</table>';
-
-      html += `
-        <div class="spacer"></div>
-        <table>
-          <tr><th>Nhóm</th><th>Có mặt</th><th>Vắng KP</th><th>Vắng CP</th></tr>
-          <tr><td>Tổng</td><td>${totalSum.present}</td><td>${totalSum.absentNP}</td><td>${totalSum.absentCP}</td></tr>
-          <tr><td>Bán trú</td><td>${btSum.present}</td><td>${btSum.absentNP}</td><td>${btSum.absentCP}</td></tr>
-          <tr><td>Không bán trú</td><td>${kbtSum.present}</td><td>${kbtSum.absentNP}</td><td>${kbtSum.absentCP}</td></tr>
-        </table>
-      `;
-      document.getElementById('monthlyStats').innerHTML = html;
-    }
-
-    // ---------- Đọc thống kê từ Excel ----------
-    document.getElementById('uploadStats').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = evt => {
-        const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: 'array' });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        let html = '<table>';
-        json.forEach((row, ri) => {
-          html += '<tr>';
-          row.forEach(cell => {
-            if (ri === 0) html += `<th>${cell ?? ''}</th>`;
-            else html += `<td>${cell ?? ''}</td>`;
-          });
-          html += '</tr>';
-        });
-        html += '</table>';
-        document.getElementById('importTable').innerHTML = html;
-      };
-      reader.readAsArrayBuffer(file);
-    });
-
-    // ---------- Khởi tạo mặc định ----------
-    function initDefaultsIfNeeded() {
-      // Set mặc định cho input ngày/tháng nếu trống
-      const attDate = document.getElementById('attDate');
-      const dailyDate = document.getElementById('dailyDate');
-      const monthSelect = document.getElementById('monthSelect');
-
-      if (attDate && !attDate.value) attDate.value = todayISO();
-      if (dailyDate && !dailyDate.value) dailyDate.value = todayISO();
-      if (monthSelect && !monthSelect.value) monthSelect.value = currentMonthISO();
-    }
-
-    (function init(){
-      // Nếu chưa có học sinh, tạo mẫu để thử
-      if (!students.length) {
-        students = [
-          { name: 'Nguyễn Văn A', dob: '01/01/2013', gender: 'Nam', class: '6A1', type: 'bán trú', parentPhone: '0901234567' },
-          { name: 'Trần Thị B', dob: '02/02/2013', gender: 'Nữ', class: '6A1', type: 'không bán trú', parentPhone: '' },
-          { name: 'Lê Văn C', dob: '03/03/2013', gender: 'Nam', class: '6A2', type: 'bán trú', parentPhone: '0907654321' }
-        ];
-        saveStudents();
-      }
-      renderStudents();
-      syncClassSelectors();
-      initDefaultsIfNeeded();
-    })();
-  </script>
+  <!-- Ứng dụng chính -->
+  <div id="appSection">
+    <button id="logoutBtn">Đăng xuất</button>
+    <h2>Ứng dụng điểm danh</h2>
+    <!-- Tại đây bạn nhúng toàn bộ các tab Quản lý học sinh, Điểm danh, Thống kê... 
+         (code mình đã gửi ở các bước trước) -->
+    <p>👉 Sau khi đăng nhập, toàn bộ các tab quản lý học sinh, điểm danh, thống kê sẽ hiển thị ở đây.</p>
+  </div>
 </body>
 </html>
