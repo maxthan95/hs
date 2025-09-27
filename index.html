@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Phần mềm điểm danh học sinh</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- SheetJS: đọc/ghi Excel -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Thư viện đọc/ghi Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -24,6 +24,7 @@
     .tab.active { display: block; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
     h2 { margin: 0 0 12px; color: var(--primary); font-size: 20px; }
+    h3 { margin: 0 0 8px; color: #1f2937; font-size: 16px; }
     label { display: inline-flex; align-items: center; gap: 8px; margin: 6px 10px 6px 0; }
     input[type="text"], input[type="date"], input[type="month"], select, input[type="tel"] {
       border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: #fff;
@@ -167,8 +168,12 @@
     // ---------- Trạng thái & Lưu trữ ----------
     const LS_STUDENTS = 'nv_students';
     const LS_ATTENDANCE = 'nv_attendance';
-    let students = JSON.parse(localStorage.getItem(LS_STUDENTS) || '[]');
-    let attendanceRecords = JSON.parse(localStorage.getItem(LS_ATTENDANCE) || '{}');
+    let students = safeParse(localStorage.getItem(LS_STUDENTS), []);
+    let attendanceRecords = safeParse(localStorage.getItem(LS_ATTENDANCE), {});
+
+    function safeParse(str, fallback) {
+      try { return JSON.parse(str || ''); } catch { return fallback; }
+    }
 
     // ---------- Nav ----------
     const tabs = [
@@ -192,16 +197,29 @@
       nav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
       if (btnRef) btnRef.classList.add('active');
       syncClassSelectors();
+      initDefaultsIfNeeded();
     }
 
     // ---------- Helpers ----------
     function saveStudents() { localStorage.setItem(LS_STUDENTS, JSON.stringify(students)); }
     function saveAttendance() { localStorage.setItem(LS_ATTENDANCE, JSON.stringify(attendanceRecords)); }
     function uniqueClasses() { return Array.from(new Set(students.map(s => s.class).filter(Boolean))).sort(); }
+    function todayISO() {
+      const d = new Date();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${m}-${day}`;
+    }
+    function currentMonthISO() {
+      const d = new Date();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      return `${d.getFullYear()}-${m}`;
+    }
     function syncClassSelectors() {
       const classes = uniqueClasses();
       ['attClass','dailyClass','monthClass'].forEach(id => {
         const sel = document.getElementById(id);
+        if (!sel) return;
         const current = sel.value;
         sel.innerHTML = '';
         classes.forEach(c => {
@@ -218,8 +236,7 @@
     }
 
     // ---------- Quản lý học sinh ----------
-    const uploadStudents = document.getElementById('uploadStudents');
-    uploadStudents.addEventListener('change', e => {
+    document.getElementById('uploadStudents').addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -228,21 +245,27 @@
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        // Bỏ header dòng đầu, map cột 0..5
         students = json.slice(1).map(r => ({
           name: r[0] || '',
           dob: r[1] || '',
           gender: r[2] || '',
           class: r[3] || '',
-          type: (r[4] || '').toLowerCase().includes('bán') ? 'bán trú' : 'không bán trú',
+          type: normalizeType(r[4]),
           parentPhone: r[5] || ''
-        })).filter(s => s.name);
+        })).filter(s => s.name && s.class);
         saveStudents();
         renderStudents();
         syncClassSelectors();
       };
       reader.readAsArrayBuffer(file);
     });
+
+    function normalizeType(val) {
+      const s = String(val || '').toLowerCase();
+      if (s.includes('bán')) return 'bán trú';
+      if (s.includes('không')) return 'không bán trú';
+      return 'không bán trú';
+    }
 
     document.getElementById('addStudent').addEventListener('click', () => {
       const s = {
@@ -275,7 +298,7 @@
       let html = '<table><tr><th>Họ tên</th><th>Ngày sinh</th><th>Giới tính</th><th>Lớp</th><th>Loại</th><th>SĐT phụ huynh</th></tr>';
       students.forEach(s => {
         html += `<tr>
-          <td>${s.name}</td>
+          <td style="text-align:left">${s.name}</td>
           <td>${s.dob}</td>
           <td>${s.gender}</td>
           <td>${s.class}</td>
@@ -286,8 +309,6 @@
       html += '</table>';
       document.getElementById('studentTable').innerHTML = html;
     }
-    renderStudents();
-    syncClassSelectors();
 
     // ---------- Điểm danh ----------
     document.getElementById('showAttendance').addEventListener('click', renderAttendance);
@@ -315,17 +336,18 @@
 
       let html = '<table><tr><th>Họ tên</th><th>Có mặt</th><th>Vắng KP</th><th>Vắng CP</th></tr>';
       attendanceRecords[key].forEach((s, i) => {
+        const group = `st_${key}_${i}`; // đảm bảo unique theo key+i
         html += `<tr>
           <td style="text-align:left">${s.name}</td>
-          <td><input type="radio" name="st${i}" ${s.status === 'present' ? 'checked' : ''} onchange="setStatus('${key}',${i},'present')"></td>
-          <td><input type="radio" name="st${i}" ${s.status === 'absent_np' ? 'checked' : ''} onchange="setStatus('${key}',${i},'absent_np')"></td>
-          <td><input type="radio" name="st${i}" ${s.status === 'absent_cp' ? 'checked' : ''} onchange="setStatus('${key}',${i},'absent_cp')"></td>
+          <td><input type="radio" name="${group}" ${s.status === 'present' ? 'checked' : ''} onchange="setStatus('${key}',${i},'present')"></td>
+          <td><input type="radio" name="${group}" ${s.status === 'absent_np' ? 'checked' : ''} onchange="setStatus('${key}',${i},'absent_np')"></td>
+          <td><input type="radio" name="${group}" ${s.status === 'absent_cp' ? 'checked' : ''} onchange="setStatus('${key}',${i},'absent_cp')"></td>
         </tr>`;
       });
       html += '</table>';
       document.getElementById('attendanceTable').innerHTML = html;
     }
-    window.setStatus = (key, i, val) => { attendanceRecords[key][i].status = val; };
+    window.setStatus = (key, i, val) => { if (attendanceRecords[key]) attendanceRecords[key][i].status = val; };
 
     // ---------- Thống kê hàng ngày ----------
     document.getElementById('btnDaily').addEventListener('click', showDailyStats);
@@ -339,6 +361,7 @@
       const date = document.getElementById('dailyDate').value;
       const cls = document.getElementById('dailyClass').value;
       const session = document.getElementById('dailySession').value;
+      if (!date || !cls) return alert('Vui lòng chọn Ngày và Lớp');
       const key = `${date}|${cls}|${session}`;
       const recs = attendanceRecords[key] || [];
       const total = recs.length;
@@ -385,7 +408,9 @@
 
       const statsByStudent = {};
       for (const key in attendanceRecords) {
-        const [dateStr, classStr] = key.split('|');
+        const parts = key.split('|'); // [dateStr, classStr, session]
+        const dateStr = parts[0] || '';
+        const classStr = parts[1] || '';
         if (classStr !== cls) continue;
         if (!dateStr.startsWith(month)) continue;
         attendanceRecords[key].forEach(r => {
@@ -398,6 +423,8 @@
       }
 
       const rows = Object.entries(statsByStudent).map(([name, s]) => ({ name, ...s }));
+      rows.sort((a,b)=>a.name.localeCompare(b.name, 'vi'));
+
       const btRows = rows.filter(r => r.type === 'bán trú');
       const kbtRows = rows.filter(r => r.type !== 'bán trú');
       const sum = arr => arr.reduce((acc, r) => ({
@@ -439,7 +466,6 @@
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        // Render toàn bộ sheet thành bảng
         let html = '<table>';
         json.forEach((row, ri) => {
           html += '<tr>';
@@ -455,8 +481,19 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // ---------- Khởi tạo ----------
-    (function initDefaults(){
+    // ---------- Khởi tạo mặc định ----------
+    function initDefaultsIfNeeded() {
+      // Set mặc định cho input ngày/tháng nếu trống
+      const attDate = document.getElementById('attDate');
+      const dailyDate = document.getElementById('dailyDate');
+      const monthSelect = document.getElementById('monthSelect');
+
+      if (attDate && !attDate.value) attDate.value = todayISO();
+      if (dailyDate && !dailyDate.value) dailyDate.value = todayISO();
+      if (monthSelect && !monthSelect.value) monthSelect.value = currentMonthISO();
+    }
+
+    (function init(){
       // Nếu chưa có học sinh, tạo mẫu để thử
       if (!students.length) {
         students = [
@@ -465,9 +502,10 @@
           { name: 'Lê Văn C', dob: '03/03/2013', gender: 'Nam', class: '6A2', type: 'bán trú', parentPhone: '0907654321' }
         ];
         saveStudents();
-        renderStudents();
       }
+      renderStudents();
       syncClassSelectors();
+      initDefaultsIfNeeded();
     })();
   </script>
 </body>
